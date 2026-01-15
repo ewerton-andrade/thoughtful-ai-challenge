@@ -1,0 +1,10 @@
+Strategy: Stream file line-by-line, grouping edges by (claim_id, status_code) into separate directed graphs. For each graph, use DFS from every node to find simple cycles back to the start node, tracking the longest.
+
+Complexity: O(n) file read, O(V! worst case) cycle detection per graph, but graphs are small in practice.
+
+Memory: Only stores edge data, not raw lines. Scales with unique (claim_id, status_code, source, dest) tuples.
+
+Pros: Simple, correct, handles streaming.
+Cons: DFS cycle detection is exponential worst-case.
+
+Future: Add pruning, parallel processing for independent graphs, or Johnson's algorithm for better cycle enumeration.
