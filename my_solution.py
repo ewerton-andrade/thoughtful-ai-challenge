@@ -2,10 +2,107 @@
 """
 Routing Cycle Detector
 Finds the longest routing cycle in a claim routing file.
+Downloads data from URL before processing.
 """
 
 import sys
+import os
+import argparse
+import re
+import urllib.request
+import urllib.error
 from collections import defaultdict
+
+
+def extract_google_drive_id(url):
+    """Extract file ID from Google Drive URL."""
+    patterns = [
+        r'/file/d/([a-zA-Z0-9_-]+)',
+        r'id=([a-zA-Z0-9_-]+)',
+        r'/d/([a-zA-Z0-9_-]+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
+
+def download_file(url, dest_folder="data"):
+    """
+    Download file from URL (supports Google Drive links).
+    Returns the path to the downloaded file.
+    """
+    # Create destination folder if it doesn't exist
+    os.makedirs(dest_folder, exist_ok=True)
+    
+    # Check if it's a Google Drive URL
+    if "drive.google.com" in url:
+        file_id = extract_google_drive_id(url)
+        if not file_id:
+            raise ValueError("Could not extract file ID from Google Drive URL")
+        
+        # Use the drive.usercontent.google.com endpoint for large files
+        download_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
+        filename = "large_input_v1.txt"
+    else:
+        download_url = url
+        filename = os.path.basename(url.split('?')[0]) or "downloaded_data.txt"
+    
+    dest_path = os.path.join(dest_folder, filename)
+    
+    print(f"Downloading from: {download_url}")
+    print(f"Saving to: {dest_path}")
+    
+    try:
+        # Create request with headers
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+        request = urllib.request.Request(download_url, headers=headers)
+        
+        with urllib.request.urlopen(request, timeout=300) as response:
+            total_size = response.headers.get('Content-Length')
+            if total_size:
+                total_size = int(total_size)
+                print(f"File size: {total_size / (1024*1024):.2f} MB")
+            
+            # Download with progress indicator
+            downloaded = 0
+            chunk_size = 1024 * 1024  # 1MB chunks
+            
+            with open(dest_path, 'wb') as out_file:
+                while True:
+                    chunk = response.read(chunk_size)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size:
+                        progress = (downloaded / total_size) * 100
+                        print(f"\rProgress: {progress:.1f}% ({downloaded / (1024*1024):.2f} MB)", end='', flush=True)
+                    else:
+                        print(f"\rDownloaded: {downloaded / (1024*1024):.2f} MB", end='', flush=True)
+            
+            print()  # New line after progress
+        
+        # Verify file was downloaded
+        if os.path.exists(dest_path) and os.path.getsize(dest_path) > 0:
+            file_size = os.path.getsize(dest_path)
+            print(f"Download complete! File size: {file_size / (1024*1024):.2f} MB")
+            
+            # Quick validation - check if it's HTML (error page)
+            with open(dest_path, 'r', encoding='utf-8', errors='ignore') as f:
+                first_line = f.readline()
+                if first_line.strip().startswith('<!DOCTYPE html>') or first_line.strip().startswith('<html'):
+                    raise RuntimeError("Download failed - received HTML page instead of data file")
+            
+            return dest_path
+        else:
+            raise RuntimeError("Download failed - file is empty or doesn't exist")
+            
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Failed to download file: {e}")
 
 
 def find_longest_cycle_in_graph(graph):
@@ -93,18 +190,39 @@ def find_longest_routing_cycle(filepath):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python3 my_solution.py <input_file>", file=sys.stderr)
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Routing Cycle Detector - Downloads data and finds the longest routing cycle"
+    )
+    parser.add_argument(
+        "data_url",
+        help="URL to download the input data file (supports Google Drive links)"
+    )
+    parser.add_argument(
+        "--dest-folder",
+        default="data",
+        help="Destination folder for downloaded file (default: data)"
+    )
     
-    filepath = sys.argv[1]
+    args = parser.parse_args()
     
-    claim_id, status_code, cycle_length = find_longest_routing_cycle(filepath)
-    
-    if claim_id is not None:
-        print(f"{claim_id},{status_code},{cycle_length}")
-    else:
-        print("No cycles found", file=sys.stderr)
+    try:
+        # Download the file
+        print("=== Downloading Data ===")
+        filepath = download_file(args.data_url, args.dest_folder)
+        
+        # Process the downloaded file
+        print("\n=== Processing Data ===")
+        claim_id, status_code, cycle_length = find_longest_routing_cycle(filepath)
+        
+        if claim_id is not None:
+            print(f"\n=== Result ===")
+            print(f"{claim_id},{status_code},{cycle_length}")
+        else:
+            print("No cycles found", file=sys.stderr)
+            sys.exit(1)
+            
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
