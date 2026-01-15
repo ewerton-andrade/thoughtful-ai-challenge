@@ -9,6 +9,10 @@ __pycache__/
 /logs
 /outputs
 
+# files extensions
+*.log
+*.txt
+
 # vscode
 .vscode/
 
