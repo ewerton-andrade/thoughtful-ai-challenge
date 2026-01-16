@@ -16,7 +16,7 @@ The algorithm groups edges by `(claim_id, status_code)` pairs and finds the long
 
 ### Python Version
 
-- **Python 3.8+** (tested with Python 3.10, 3.11, 3.12)
+- **Python 3.10+** (tested with Python 3.10, 3.11, 3.12)
 
 ### Dependencies
 
