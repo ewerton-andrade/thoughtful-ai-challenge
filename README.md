@@ -1,3 +1,6 @@
+# The deliverables
+They are already in the main folder according to the challenge instructions. You can also run the script an generate new results for the same or other files.
+
 # Routing Cycle Detector
 
 A Python tool that finds the longest routing cycle in claim routing data files. It supports downloading data directly from URLs (including Google Drive) and generates detailed results with logging.
@@ -16,7 +19,7 @@ The algorithm groups edges by `(claim_id, status_code)` pairs and finds the long
 
 ### Python Version
 
-- **Python 3.8+** (tested with Python 3.10, 3.11, 3.12)
+- **Python 3.10+** (tested with Python 3.10, 3.11, 3.12)
 
 ### Dependencies
 
